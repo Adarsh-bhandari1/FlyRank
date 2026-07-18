@@ -47,7 +47,7 @@ npm install
 ### 4. Run the server
 
 ```bash
-npm start
+node index.js
 ```
 
 The API will start on
@@ -76,14 +76,14 @@ npm start
 
 # API Endpoints
 
-| Method | Endpoint | Description |
-|---------|----------|-------------|
-| GET | `/` | Home Route |
-| GET | `/items` | Get all items |
-| GET | `/items/:id` | Get item by ID |
-| POST | `/items` | Create new item |
-| PUT | `/items/:id` | Update an item |
-| DELETE | `/items/:id` | Delete an item |
+| Method | Endpoint     | Description     |
+| ------ | ------------ | --------------- |
+| GET    | `/`          | Home Route      |
+| GET    | `/items`     | Get all items   |
+| GET    | `/items/:id` | Get item by ID  |
+| POST   | `/items`     | Create new item |
+| PUT    | `/items/:id` | Update an item  |
+| DELETE | `/items/:id` | Delete an item  |
 
 > Replace the endpoints above with your actual routes if they are different.
 
