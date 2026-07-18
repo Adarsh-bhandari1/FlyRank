@@ -1,6 +1,9 @@
 import express from 'express';
+import swaggerUi from "swagger-ui-express";
+import swaggerDocument from "./openapi.json" with { type: "json" }; 
 const app = express();
 const port = 3000;
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 app.use(express.json());
 let tasks = [
   { id: 1, title: "Buy groceries", done: false },
