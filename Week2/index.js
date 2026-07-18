@@ -35,6 +35,22 @@ app.get('/tasks/:id', (req, res) => {
     res.json(task);
 })
 
+app.post('/tasks', (req, res) => {
+    const {title} = req.body;
+    if (!title || title.trim() === '') {
+        return res.status(400).json({ error: "Title required" });
+    }
+
+    const newId = tasks.length > 0 ? Math.max(...tasks.map(task => task.id)) + 1 : 1;
+
+    const newTask = {
+        id: newId,
+        title: title.trim(),
+        done: false
+    };
+    tasks.push(newTask);
+    return res.status(201).json(newTask);
+})
 app.listen(port, () => {
     console.log(`server running on port ${port}`);
 })
