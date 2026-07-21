@@ -24,7 +24,7 @@ router.get("/:id", async (req, res) => {
 
     if (!task) {
       return res.status(404).json({
-        error: `Task ${id} not found`,
+        error: "Task not found",
       });
     }
 
