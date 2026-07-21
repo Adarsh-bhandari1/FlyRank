@@ -1,5 +1,5 @@
 import express from "express";
-import { getAllTasks, getTaskById } from "../repository/taskRepo.js";
+import { getAllTasks, getTaskById, createTask } from "../repository/taskRepo.js";
 
 const router = express.Router();
 
@@ -29,6 +29,27 @@ router.get("/:id", async (req, res) => {
     }
 
     res.status(200).json(task);
+  } catch (err) {
+    res.status(500).json({
+      error: err.message,
+    });
+  }
+});
+
+// POST /tasks
+router.post("/", async (req, res) => {
+  try {
+    const { title } = req.body;
+
+    if (!title || title.trim() === "") {
+      return res.status(400).json({
+        error: "Title is required",
+      });
+    }
+
+    const task = await createTask(title.trim());
+
+    res.status(201).json(task);
   } catch (err) {
     res.status(500).json({
       error: err.message,

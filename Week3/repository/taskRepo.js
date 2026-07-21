@@ -23,3 +23,21 @@ export function getTaskById(id) {
     });
   });
 }
+
+export function createTask(title) {
+  return new Promise((resolve, reject) => {
+    const sql = "INSERT INTO tasks (title, completed) VALUES (?, ?)";
+
+    db.run(sql, [title, 0], function (err) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve({
+          id: this.lastID,
+          title,
+          completed: 0,
+        });
+      }
+    });
+  });
+}
