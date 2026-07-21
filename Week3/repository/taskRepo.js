@@ -41,3 +41,35 @@ export function createTask(title) {
     });
   });
 }
+
+export function updateTask(id, title, completed) {
+  return new Promise((resolve, reject) => {
+    const sql = "UPDATE tasks SET title = ?, completed = ? WHERE id = ?";
+
+    db.run(sql, [title, completed, id], function (err) {
+      if (err) {
+        reject(err);
+      } else if (this.changes === 0) {
+        resolve(null);
+      } else {
+        resolve({
+          id,
+          title,
+          completed,
+        });
+      }
+    });
+  });
+}
+
+export function deleteTask(id) {
+  return new Promise((resolve, reject) => {
+    db.run("DELETE FROM tasks WHERE id = ?", [id], function (err) {
+      if (err) {
+        reject(err);
+      } else {
+        resolve(this.changes);
+      }
+    });
+  });
+}
