@@ -1,12 +1,33 @@
 import express from "express";
-import db from "./database.js";
+import swaggerUi from "swagger-ui-express";
+import swaggerDocument from "./openapi.json" with { type: "json" };
+
+import "./database.js";
+import taskRoutes from "./routes/tasks.js";
 
 const app = express();
+const port = 3000;
 
 app.use(express.json());
 
-const PORT = 3000;
+app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+app.get("/", (req, res) => {
+  res.json({
+    name: "Task API",
+    version: "1.0",
+    endpoints: ["/tasks"],
+  });
+});
+
+app.get("/health", (req, res) => {
+  res.json({
+    status: "ok",
+  });
+});
+
+app.use("/tasks", taskRoutes);
+
+app.listen(port, () => {
+  console.log(`Server running on port ${port}`);
 });
