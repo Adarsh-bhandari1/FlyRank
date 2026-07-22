@@ -7,7 +7,9 @@ const db = new sqlite3.Database("./tasks.db", (err) => {
     console.log("Connected to SQLite database.");
   }
 });
+import path from "path";
 
+console.log("Using database:", path.resolve("./tasks.db"));
 db.serialize(() => {
   // Create the tasks table
   db.run(

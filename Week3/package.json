@@ -1,18 +1,18 @@
 {
   "name": "week3",
   "version": "1.0.0",
-  "main": "index.js",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
   "dependencies": {
     "express": "^5.2.1",
     "sqlite3": "^6.0.1",
     "swagger-ui-express": "^5.0.1"
-  }
+  },
+  "description": "A simple REST API built using **Node.js**, **Express.js**, **SQLite**, and **Swagger UI**. This project is a continuation of Assignment 1, where the in-memory task storage has been replaced with a SQLite database. The API endpoints remain the same, but the data now persists even after the server restarts.",
+  "main": "database.js",
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
 }
