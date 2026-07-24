@@ -1,42 +1,38 @@
+import app from "./src/app.js";
 import pool from "./src/db.js";
 
-async function initializeDatabase() {
-  try {
-    // Check connection
-    await pool.query("SELECT NOW()");
-    console.log("Connected to PostgreSQL");
+const PORT = process.env.PORT || 3000;
 
-    // Create table if it doesn't exist
+async function initializeDatabase() {
+
     await pool.query(`
-      CREATE TABLE IF NOT EXISTS tasks (
-        id SERIAL PRIMARY KEY,
-        title TEXT NOT NULL,
-        done BOOLEAN DEFAULT FALSE
-      );
+        CREATE TABLE IF NOT EXISTS tasks(
+            id SERIAL PRIMARY KEY,
+            title TEXT NOT NULL,
+            done BOOLEAN DEFAULT FALSE
+        )
     `);
 
-    console.log("Tasks table is ready.");
-
-    // Check if table is empty
-    const result = await pool.query("SELECT COUNT(*) FROM tasks");
+    const result = await pool.query(
+        "SELECT COUNT(*) FROM tasks"
+    );
 
     if (Number(result.rows[0].count) === 0) {
-      await pool.query(`
-        INSERT INTO tasks (title, done)
-        VALUES
-          ('Learn Docker', false),
-          ('Learn PostgreSQL', false),
-          ('Complete FlyRank Assignment', false);
-      `);
 
-      console.log("Seeded 3 example tasks.");
-    } else {
-      console.log("Database already contains data.");
+        await pool.query(`
+            INSERT INTO tasks(title,done)
+            VALUES
+            ('Learn Docker',false),
+            ('Learn PostgreSQL',false),
+            ('Complete FlyRank Assignment',false)
+        `);
+
     }
 
-  } catch (err) {
-    console.error(err);
-  }
+    app.listen(PORT, () => {
+        console.log(`Server running on port ${PORT}`);
+    });
+
 }
 
 initializeDatabase();
