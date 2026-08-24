@@ -118,6 +118,30 @@ app.get("/protected/profile", async (req, res) => {
 
 });
 
+// Constructing a middleware 
+const authenticateMiddleware = async (req, res , next) => {
+  const authHeader = req.headers["authorization"];
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Access token required" });
+  }
+  const token = authHeader.split(" ")[1]; // split(' ') splits the string wherever there is a space:
+  try {
+    const {
+      data: { user },
+      error,
+    } = await superbase.auth.getUser(token);
+    if (error || !user) {
+      return res.status(401).json({ error: "Invalid or expired token" });
+    }
+    req.user = user;
+    next(); // Proceed to the actual route handler
+  }
+  catch (error) {
+    console.error("Auth Middleware Error!")
+    return res.status(500).json({ error: "Internal Server error" });
+  }
+}
+
 app.listen(port, () => {
   console.log(`Server running at ${port}`);
   console.log(`superbase connected`);
