@@ -2,8 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-// import swaggerUi from "swagger-ui-express";
-// import YAML from "yamljs";
+import swaggerUi from "swagger-ui-express";
+import YAML from "yamljs";
 import "dotenv/config";
 const app = express();
 const port = process.env.PORT;
@@ -15,8 +15,13 @@ if (!superbase_url || !superbase_key) {
   console.log("Unable to connect to superbase please check the credentials!");
   process.exit(1);  // Prevent runnig with undefined client
 }
-// const swaggerDocument = YAML.load('./swagger.yaml');
-// app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+try {
+  const swaggerDocument = YAML.load("./swagger.yaml");
+  app.use("/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+  console.log(` Swagger UI available at http://localhost:${port}/docs`);
+} catch (err) {
+  console.warn(" Could not load swagger.yaml:", err.message);
+}
 const superbase = createClient(superbase_url, superbase_key);
 app.get("/", (req, res) => {
   res.json({

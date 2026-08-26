@@ -1,0 +1,100 @@
+openapi: 3.0.0
+info:
+  title: Auth Practice API
+  version: 1.0.0
+  description: Secure API with Supabase Auth - FlyRank Internship W2 A4
+
+servers:
+  - url: http://localhost:3000
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+paths:
+  /auth/signup:
+    post:
+      summary: Sign up a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: test@example.com
+                password:
+                  type: string
+                  example: password123
+      responses:
+        '201':
+          description: User created successfully
+        '400':
+          description: Missing credentials or validation error
+
+  /auth/login:
+    post:
+      summary: Log in and get access token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                  example: test@example.com
+                password:
+                  type: string
+                  example: password123
+      responses:
+        '200':
+          description: Login successful, returns access_token
+        '401':
+          description: Invalid credentials
+
+  /auth/logout:
+    post:
+      summary: Log out (protected)
+      security:
+        - BearerAuth: []
+      responses:
+        '204':
+          description: Logged out successfully
+        '401':
+          description: Access token required or invalid
+
+  /public/info:
+    get:
+      summary: Public info (no auth)
+      responses:
+        '200':
+          description: Public message
+
+  /protected/profile:
+    get:
+      summary: Get user profile (protected)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: User profile data
+        '401':
+          description: Invalid or missing token
+
+  /protected/dashboard:
+    get:
+      summary: Dashboard (protected)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: Dashboard data
+        '401':
+          description: Invalid or missing token
