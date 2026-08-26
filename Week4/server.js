@@ -2,6 +2,8 @@ import { createClient } from "@supabase/supabase-js";
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+// import swaggerUi from "swagger-ui-express";
+// import YAML from "yamljs";
 import "dotenv/config";
 const app = express();
 const port = process.env.PORT;
@@ -9,10 +11,12 @@ app.use(cors());
 app.use(express.json());
 const superbase_url = process.env.SUPERBASE_URl;
 const superbase_key = process.env.SUPERBASE_KEY;
-if (!superbase_url || superbase_key) {
+if (!superbase_url || !superbase_key) {
   console.log("Unable to connect to superbase please check the credentials!");
+  process.exit(1);  // Prevent runnig with undefined client
 }
-
+// const swaggerDocument = YAML.load('./swagger.yaml');
+// app.use('/docs', swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 const superbase = createClient(superbase_url, superbase_key);
 app.get("/", (req, res) => {
   res.json({
@@ -67,56 +71,6 @@ app.get("/public/info", (req, res) => {
     message: "Welcome stranger! This info is public.",
   });
 });
-app.get("/protected/profile", (req, res) => {
-  const authHeader = req.headers["authorization"];
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return res.status(401).json({
-      error: `Access token required`,
-    });
-  }
-  const token = authHeader.split(" ")[1];
-  if (!token) {
-    return res.status(401).json({ error: "Access token required" });
-  }
-  if (!token) {
-    return res.status(401).json({ error: "Access token required" });
-  }
-  res
-    .status(200)
-    .json({ message: "Token received. Verification coming in Stage 3!" });
-});
-
-app.get("/protected/profile", async (req, res) => {
-  const authHeader = req.headers["authorization"];
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    return res.status(401).json({ error: "Access token required" });
-
-  }
-
-  const token = authHeader.split(' ')[1];
-
-  try {
-    const { data: { user }  , error} = await supabase.auth.getUser(token)
-    
-        if (error || !user) {
-            return res.status(401).json({ error: "Invalid or expired token" });
-    }
-    return res.status(200).json({
-      id : user.id,
-      email: user.email,
-      created_at: user.created_at,
-      
-
-      
-    })
-  }
-  catch (error) {
-    return res.status(401).json({
-      error: "Invalid or expired token"
-    });
-  }
-
-});
 
 // Constructing a middleware 
 const authenticateMiddleware = async (req, res , next) => {
@@ -141,6 +95,35 @@ const authenticateMiddleware = async (req, res , next) => {
     return res.status(500).json({ error: "Internal Server error" });
   }
 }
+
+app.get("/protected/profile", authenticateMiddleware , (req, res) => {
+  return res.status(200).json({
+    id: req.user.id,
+    email: req.user.email,
+    created_at : req.user.created_at
+  })
+});
+
+// PROOF OF REUSE: Same middleware, zero new auth logic
+app.get("/protected/dashboard", authenticateMiddleware, (req, res) => {
+  return res.status(200).json({
+    message: `Welcome back, ${req.user.email}!`,
+    dashboard_data: "Your private dashboard content here"
+  });
+});
+
+app.post("/auth/logout", authenticateMiddleware, async (req, res) => {
+  try {
+    await superbase.auth.signOut();
+    return res.status(204).send();
+  } catch (error) {
+    console.error("Logout error :", error);
+    return res.status(500).json({
+      error: "Internal Server error"
+    })
+  }
+});
+
 
 app.listen(port, () => {
   console.log(`Server running at ${port}`);
