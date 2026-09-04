@@ -43,16 +43,17 @@ function normalizePrice(priceText) {
   return isNaN(num) ? NaN : Math.round(num * 100) / 100;
 }
 
-// Core functions for the scraper
-async function getPageHtml(url) {
+// Core functions for the scraper - returns { html, cached }
+async function getPageHtml(url, attempt = 1) {
   const urlObj = new URL(url);
   const safeName = urlObj.pathname.replace(/^\//, "").replace(/\//g, "_");
   const cacheFile = `${safeName}.html`;
   const cachePath = path.join(CONFIG.CACHE_DIR, cacheFile);
 
+  // Check cache FIRST
   if (fs.existsSync(cachePath)) {
     console.log(`CACHE HIT: ${cacheFile}`);
-    return fs.readFileSync(cachePath, "utf-8");
+    return { html: fs.readFileSync(cachePath, "utf-8"), cached: true };
   }
 
   console.log(`FETCH: ${url}`);
@@ -67,11 +68,20 @@ async function getPageHtml(url) {
 
     clearTimeout(timeoutId);
 
-    // Status check
-    if (response.status !== 200) {
-      throw new Error(
-        `HTTP ${response.status}: ${response.statusText || "Unknown"}`,
-      );
+    // PERMANENT FAILURES: Do NOT retry 404/403
+    if (response.status === 404 || response.status === 403) {
+      throw new Error(`PERMANENT_FAILURE: HTTP ${response.status}`);
+    }
+
+    // TRANSIENT FAILURES: Retry ONCE for 5xx or timeouts
+    if (!response.ok && attempt < 2) {
+      console.warn(`Transient failure (${response.status}), retrying once...`);
+      await new Promise((r) => setTimeout(r, CONFIG.POLITE_DELAY_MS));
+      return getPageHtml(url, attempt + 1);
+    }
+
+    if (!response.ok) {
+      throw new Error(`FAILED AFTER RETRY: HTTP ${response.status}`);
     }
 
     const html = await response.text();
@@ -79,9 +89,20 @@ async function getPageHtml(url) {
     console.log(`Saved ${html.length} bytes to ${cacheFile}`);
 
     await new Promise((r) => setTimeout(r, CONFIG.POLITE_DELAY_MS));
-    return html;
+    return { html, cached: false };
   } catch (error) {
     clearTimeout(timeoutId);
+
+    // Re-throw permanent failures immediately
+    if (error.message.includes("PERMANENT_FAILURE")) throw error;
+
+    // Retry network-level transient errors once
+    if (attempt < 2) {
+      console.warn(`Network error, retrying once: ${error.message}`);
+      await new Promise((r) => setTimeout(r, CONFIG.POLITE_DELAY_MS));
+      return getPageHtml(url, attempt + 1);
+    }
+
     console.error(`Failed to fetch ${url}: ${error.message}`);
     throw error;
   }
@@ -97,7 +118,8 @@ async function discoverUrls() {
     pageCount++;
     console.log(`\nProcessing Page ${pageCount}`);
 
-    const html = await getPageHtml(currentPageUrl);
+    // Destructure html from returned object
+    const { html } = await getPageHtml(currentPageUrl);
     const $ = cheerio.load(html);
 
     console.log(
@@ -129,8 +151,8 @@ async function discoverUrls() {
   return [...allBookUrls];
 }
 
-async function extractBookDetails(bookUrl, sourcePage) {
-  const html = await getPageHtml(bookUrl);
+// extractBookDetails now accepts raw HTML string directly
+async function extractBookDetails(bookUrl, sourcePage, html) {
   const $ = cheerio.load(html);
 
   const productMain = $("div.product_main");
@@ -157,6 +179,11 @@ async function extractBookDetails(bookUrl, sourcePage) {
 
 // Execution of the scraper
 (async () => {
+  const startTime = Date.now();
+  let pagesFetched = 0;
+  let cacheHits = 0;
+  let failedPages = 0;
+
   try {
     const urls = await discoverUrls();
 
@@ -195,14 +222,29 @@ async function extractBookDetails(bookUrl, sourcePage) {
       }
     }
 
-    // Validate & store with deduplication
+    // Validate & store with deduplication and accurate metrics
     const seenUrls = new Set();
     const validRecords = [];
     const errors = [];
 
     for (const url of urls) {
       try {
-        const raw = await extractBookDetails(url, urlToSourcePage.get(url));
+        // Get both html and cached status
+        const { html, cached } = await getPageHtml(url);
+
+        // ACCURATE METRIC TRACKING
+        if (cached) {
+          cacheHits++;
+        } else {
+          pagesFetched++;
+        }
+
+        // Pass raw html string to extraction function
+        const raw = await extractBookDetails(
+          url,
+          urlToSourcePage.get(url),
+          html,
+        );
         const priceGbp = normalizePrice(raw.price_text);
 
         if (isNaN(priceGbp))
@@ -229,6 +271,7 @@ async function extractBookDetails(bookUrl, sourcePage) {
         seenUrls.add(result.data.product_url);
         validRecords.push(result.data);
       } catch (err) {
+        failedPages++;
         errors.push({ url, reason: err.message, raw_data: null });
         console.error(`Failed ${url}: ${err.message}`);
       }
@@ -247,6 +290,27 @@ async function extractBookDetails(bookUrl, sourcePage) {
       );
       console.log(`${errors.length} invalid records → errors.json`);
     }
+
+    // GENERATE RUN REPORT (Stage 5 Requirement)
+    const durationSec = ((Date.now() - startTime) / 1000).toFixed(2);
+
+    const report = {
+      start_time: new Date(startTime).toISOString(),
+      duration_seconds: parseFloat(durationSec),
+      pages_fetched: pagesFetched,
+      cache_hits: cacheHits,
+      valid_records: validRecords.length,
+      invalid_records: errors.length,
+      failed_pages: failedPages,
+    };
+
+    fs.writeFileSync(
+      path.join(CONFIG.OUTPUT_DIR, "run-report.json"),
+      JSON.stringify(report, null, 2),
+    );
+
+    console.log("\nRUN REPORT GENERATED:");
+    console.log(JSON.stringify(report, null, 2));
 
     console.log("Validation complete");
     console.log(
