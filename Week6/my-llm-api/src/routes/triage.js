@@ -5,26 +5,26 @@ import { callLLM } from "../llm/client.js";
 const router = express.Router();
 
 router.post("/triage", async (req, res) => {
+  if (process.env.LLM_ENABLED === "false") {
+    return res.status(503).json({
+      error: "LLM integration is currently disabled",
+      fallback: {
+        category: "other",
+        urgency: "low",
+        confidence: 0,
+        reason: "Service temporarily unavailable",
+      },
+    });
+  }
 
   const inputResult = TriageInputSchema.safeParse(req.body);
-
   if (!inputResult.success) {
-    // FIXED: Safely access .errors array
-    const details = inputResult.error.errors
-      ? inputResult.error.errors.map((e) => ({
-          field: e.path.join("."),
-          message: e.message,
-        }))
-      : [
-          {
-            field: "body",
-            message: inputResult.error.message || "Invalid JSON",
-          },
-        ];
-
     return res.status(400).json({
       error: "Invalid input",
-      details,
+      details: inputResult.error.errors.map((e) => ({
+        field: e.path.join("."),
+        message: e.message,
+      })),
     });
   }
 
@@ -35,27 +35,19 @@ router.post("/triage", async (req, res) => {
       category: "bug",
       urgency: "normal",
       confidence: 0.95,
-      reason: "Stub response: Validated against schema successfully.",
+      reason: "Stub response",
     });
   }
 
-  // 3. Kill Switch Check
-  if (process.env.LLM_ENABLED === "false") {
-    return res.status(503).json({
-      error: "LLM integration is currently disabled",
-    });
-  }
 
   try {
-    const rawResponse = await callLLM(text);
-    res.json({
-      status: "success",
-      raw_model_output: rawResponse,
-    });
+    const validatedResponse = await callLLM(text);
+    res.json(validatedResponse);
   } catch (error) {
     console.error("LLM Error:", error.message);
     res.status(504).json({
       error: "LLM request timed out or failed",
+      details: error.message,
     });
   }
 });
