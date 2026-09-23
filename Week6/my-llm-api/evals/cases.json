@@ -1,0 +1,42 @@
+[
+  {
+    "id": 1,
+    "input": "My bill is wrong, I was charged twice",
+    "expected": { "category": "billing", "urgency": "normal" }
+  },
+  {
+    "id": 2,
+    "input": "App crashes every time I click save",
+    "expected": { "category": "bug", "urgency": "high" }
+  },
+  {
+    "id": 3,
+    "input": "Can you add dark mode?",
+    "expected": { "category": "feature", "urgency": "low" }
+  },
+  {
+    "id": 4,
+    "input": "Hello",
+    "expected": { "category": "other", "urgency": "low" }
+  },
+  {
+    "id": 5,
+    "input": "asdfjkl; random gibberish test",
+    "expected": { "category": "other", "urgency": "low" }
+  },
+  {
+    "id": 6,
+    "input": "I need help but I don't know what's wrong",
+    "expected": { "category": "other", "urgency": "normal" }
+  },
+  {
+    "id": 7,
+    "input": "URGENT: System is completely down and we are losing money!",
+    "expected": { "category": "bug", "urgency": "high" }
+  },
+  {
+    "id": 8,
+    "input": "Is this service compliant with HIPAA regulations?",
+    "expected": { "category": "other", "urgency": "normal" }
+  }
+]
