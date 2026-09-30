@@ -35,7 +35,7 @@ export default function DecisionNode({ data }) {
         type="source"
         position={Position.Top}
         id="yes"
-        className="!bg-green-500 !w-3 !h-3 !border-2 !border-white"
+        className="bg-green-500 w-3 h-3 border-2 border-white"
         style={{ left: "30%" }}
       />
       <div
@@ -50,7 +50,7 @@ export default function DecisionNode({ data }) {
         type="source"
         position={Position.Top}
         id="no"
-        className="!bg-red-500 !w-3 !h-3 !border-2 !border-white"
+        className="bg-red-500 w-3 h-3 border-2 border-white"
         style={{ left: "70%" }}
       />
       <div
@@ -64,7 +64,7 @@ export default function DecisionNode({ data }) {
       <Handle
         type="target"
         position={Position.Bottom}
-        className="!bg-gray-400 !w-3 !h-3 !border-2 !border-white"
+        className="bg-gray-400 w-3 h-3 border-2 border-white"
       />
     </div>
   );
