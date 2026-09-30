@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import ReactFlow, {
   Controls,
   Background,
@@ -15,45 +15,42 @@ import { YesEdge, NoEdge } from "./CustomEdges";
 import NodeConfigPanel from "../panels/NodeConfigPanel";
 import useWorkflowStore from "@/store/useWorkflowStore";
 
-const nodeTypes = {
-  decision: DecisionNode,
-};
-
-const edgeTypes = {
-  yes: YesEdge,
-  no: NoEdge,
-};
+const nodeTypes = { decision: DecisionNode };
+const edgeTypes = { yes: YesEdge, no: NoEdge };
 
 export default function WorkflowEditor() {
   const {
-    nodes,
-    edges,
-    addNode,
+    nodes: storeNodes,
+    edges: storeEdges,
+    addNode: storeAddNode,
     addEdge: storeAddEdge,
-    removeNode,
-    removeEdge,
+    removeNode: storeRemoveNode,
     selectNode,
     clearSelection,
     saveWorkflow,
     loadWorkflow,
   } = useWorkflowStore();
 
-  const [rfNodes, setRfNodes, onNodesChange] = useNodesState(nodes);
-  const [rfEdges, setRfEdges, onEdgesChange] = useEdgesState(edges);
+  // Use refs to track initialization state safely
+  const hasInitialized = useRef(false);
 
-  // Sync store with React Flow
-  useEffect(() => {
-    setRfNodes(nodes);
-  }, [nodes, setRfNodes]);
+  // Initialize React Flow with empty arrays first
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
-  useEffect(() => {
-    setRfEdges(edges);
-  }, [edges, setRfEdges]);
-
-  // Load saved workflow on mount
+  // Load workflow only once on mount
   useEffect(() => {
     loadWorkflow();
-  }, []);
+  }, [loadWorkflow]); // ✅ Fixed: Added dependency
+
+  // Sync initial load from store to React Flow ONLY ONCE
+  useEffect(() => {
+    if (!hasInitialized.current && storeNodes.length > 0) {
+      setNodes(storeNodes);
+      setEdges(storeEdges);
+      hasInitialized.current = true;
+    }
+  }, [storeNodes, storeEdges, setNodes, setEdges]); // ✅ Fixed: Added all dependencies
 
   const onConnect = useCallback(
     (params) => {
@@ -61,36 +58,42 @@ export default function WorkflowEditor() {
         ...params,
         type: params.sourceHandle === "yes" ? "yes" : "no",
       };
+      setEdges((eds) => addEdge(edge, eds));
       storeAddEdge(edge);
     },
-    [storeAddEdge],
+    [setEdges, storeAddEdge],
   );
 
   const onNodeClick = useCallback(
-    (_, node) => {
-      selectNode(node.id);
-    },
+    (_, node) => selectNode(node.id),
     [selectNode],
   );
 
-  const onPaneClick = useCallback(() => {
-    clearSelection();
-  }, [clearSelection]);
+  const onPaneClick = useCallback(() => clearSelection(), [clearSelection]);
 
   const handleAddNode = () => {
-    const newNode = addNode({ x: 100, y: 100 });
+    const newNode = storeAddNode({ x: 100, y: 100 });
+    setNodes((nds) => [...nds, newNode]);
     selectNode(newNode.id);
   };
 
   const handleDeleteSelected = () => {
     const { selectedNode } = useWorkflowStore.getState();
     if (selectedNode) {
-      removeNode(selectedNode);
+      setNodes((nds) => nds.filter((n) => n.id !== selectedNode));
+      setEdges((eds) =>
+        eds.filter(
+          (e) => e.source !== selectedNode && e.target !== selectedNode,
+        ),
+      );
+      storeRemoveNode(selectedNode);
       clearSelection();
     }
   };
 
   const handleSave = () => {
+    // Update store with current RF state before saving
+    useWorkflowStore.setState({ nodes, edges });
     saveWorkflow();
     alert("Workflow saved!");
   };
@@ -101,16 +104,14 @@ export default function WorkflowEditor() {
         {/* Toolbar */}
         <div className="h-14 border-b bg-white flex items-center px-4 gap-2">
           <Button onClick={handleAddNode} size="sm">
-            <Plus className="w-4 h-4 mr-1" />
-            Add Node
+            <Plus className="w-4 h-4 mr-1" /> Add Node
           </Button>
           <Button
             onClick={handleDeleteSelected}
             variant="destructive"
             size="sm"
           >
-            <Trash2 className="w-4 h-4 mr-1" />
-            Delete Selected
+            <Trash2 className="w-4 h-4 mr-1" /> Delete Selected
           </Button>
           <Button
             onClick={handleSave}
@@ -118,16 +119,15 @@ export default function WorkflowEditor() {
             size="sm"
             className="ml-auto"
           >
-            <Save className="w-4 h-4 mr-1" />
-            Save Workflow
+            <Save className="w-4 h-4 mr-1" /> Save Workflow
           </Button>
         </div>
 
-        {/* React Flow Canvas */}
+        {/* Canvas */}
         <div className="flex-1">
           <ReactFlow
-            nodes={rfNodes}
-            edges={rfEdges}
+            nodes={nodes}
+            edges={edges}
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onConnect={onConnect}
