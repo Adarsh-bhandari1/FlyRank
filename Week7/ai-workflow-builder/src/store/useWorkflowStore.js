@@ -5,6 +5,9 @@ const useWorkflowStore = create((set, get) => ({
   nodes: [],
   edges: [],
   selectedNode: null,
+  activeNodeId: null,
+  executionLogs: [],
+  isExecuting: false,
 
   // Add a new decision node
   addNode: (position) => {
@@ -76,6 +79,19 @@ const useWorkflowStore = create((set, get) => ({
     const { nodes, edges } = get();
     localStorage.setItem("workflow", JSON.stringify({ nodes, edges }));
   },
+
+  setActiveNode: (id) => set({ activeNodeId: id }),
+  addLog: (log) =>
+    set((state) => ({
+      executionLogs: [...state.executionLogs, log],
+    })),
+  setExecuting: (status) => set({ isExecuting: status }),
+  clearExecutionState: () =>
+    set({
+      activeNodeId: null,
+      executionLogs: [],
+      isExecuting: false,
+    }),
 }));
 
 export default useWorkflowStore;
