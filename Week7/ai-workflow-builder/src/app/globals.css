@@ -33,3 +33,13 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+.react-flow__edge.active path {
+  stroke-dasharray: 5;
+  animation: dash 1s linear infinite;
+}
+
+@keyframes dash {
+  to {
+    stroke-dashoffset: -10;
+  }
+}
