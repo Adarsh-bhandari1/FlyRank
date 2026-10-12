@@ -6,37 +6,37 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const DB_PATH = join(__dirname, "report.db");
 
+
 export function getReportData() {
   const db = new DatabaseSync(DB_PATH);
 
   const totalOrders = db
     .prepare("SELECT COUNT(*) as count FROM orders")
     .get().count;
-
   const totalRevenue =
     db.prepare("SELECT SUM(amount) as sum FROM orders").get().sum || 0;
 
   const topProducts = db
     .prepare(
       `
-      SELECT product, SUM(amount) as revenue
-      FROM orders
-      GROUP BY product
-      ORDER BY revenue DESC
-      LIMIT 5
-    `,
+    SELECT product, SUM(amount) as revenue
+    FROM orders
+    GROUP BY product
+    ORDER BY revenue DESC
+    LIMIT 5
+  `,
     )
     .all();
 
   const dailyOrders = db
     .prepare(
       `
-      SELECT created_at as date, COUNT(*) as count
-      FROM orders
-      WHERE created_at >= date('now', '-7 days')
-      GROUP BY created_at
-      ORDER BY created_at ASC
-    `,
+    SELECT created_at as date, COUNT(*) as count
+    FROM orders
+    WHERE created_at >= date('now', '-7 days')
+    GROUP BY created_at
+    ORDER BY created_at ASC
+  `,
     )
     .all();
 
@@ -49,6 +49,37 @@ export function getReportData() {
       product: p.product,
       revenue: Math.round(p.revenue * 100) / 100,
     })),
-    dailyOrders, 
+    dailyOrders,
   };
+}
+
+
+export function saveReportRecord(id, filePath) {
+  const db = new DatabaseSync(DB_PATH);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS reports (
+      id TEXT PRIMARY KEY,
+      path TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+  `);
+
+  db.prepare("INSERT INTO reports (id, path, created_at) VALUES (?, ?, ?)").run(
+    id,
+    filePath,
+    new Date().toISOString(),
+  );
+
+  const report = db.prepare("SELECT * FROM reports WHERE id = ?").get(id);
+  db.close();
+  return report;
+}
+
+
+export function getReportById(id) {
+  const db = new DatabaseSync(DB_PATH);
+  const report = db.prepare("SELECT * FROM reports WHERE id = ?").get(id);
+  db.close();
+  return report;
 }
