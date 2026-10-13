@@ -2,7 +2,12 @@ import express from "express";
 import { v4 as uuidv4 } from "uuid";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import { getReportData, saveReportRecord, getReportById } from "./db.js";
+import {
+  getReportData,
+  saveReportRecord,
+  getReportById,
+  getReportForToday,
+} from "./db.js";
 import { generatePDF } from "./render.js";
 
 const __filename = fileURLToPath(import.meta.url);
@@ -16,27 +21,6 @@ app.get("/health", (req, res) => {
   res.json({
     status: "ok",
   });
-});
-
-app.post("/reports", async (req, res) => {
-  try {
-    const id = uuidv4();
-    const pdfPath = join(REPORTS_DIR, `${id}.pdf`);
-    console.log(`[POST /reports] Generating report ${id}...`);
-    const reportData = getReportData();
-    await generatePDF(reportData, pdfPath);
-
-    const report = saveReportRecord(id, pdfPath);
-
-    console.log(`[POST /reports] Report ${id} generated successfully`);
-    res.status(201).json({
-      id: report.id,
-      file: `/reports/${report.id}/file`,
-    });
-  } catch (error) {
-    console.error("[POST /reports] Failed:", error);
-    res.status(500).json({ error: "Failed to generate report" });
-  }
 });
 
 app.get("/reports/:id", async (req, res) => {
@@ -54,7 +38,6 @@ app.get("/reports/:id", async (req, res) => {
   });
 });
 
-
 app.get("/reports/:id/file", (req, res) => {
   const report = getReportById(req.params.id);
 
@@ -65,6 +48,39 @@ app.get("/reports/:id/file", (req, res) => {
   res.sendFile(report.path);
 });
 
+app.post("/reports", async (req, res) => {
+  try {
+    const force = req.body?.force === true;
+    if (!force) {
+      const existing = getReportForToday();
+      if (existing) {
+        console.log(
+          `[POST /reports] Returning existing report ${existing.id} (idempotent)`,
+        );
+        return res.status(200).json({
+          id: existing.id,
+          file: `/reports/${existing.id}/file`,
+          message: "Report already generated today",
+        });
+      }
+    }
+
+    const id = uuidv4();
+    const pdfPath = join(REPORTS_DIR, `${id}.pdf`);
+    console.log(`[POST /reports] Generating new report ${id}...`);
+    const reportData = getReportData();
+    await generatePDF(reportData, pdfPath);
+    const report = saveReportRecord(id, pdfPath);
+    console.log(`[POST /reports] New report ${id} generated successfully`);
+    res.status(201).json({
+      id: report.id,
+      file: `/reports/${report.id}/file`,
+    });
+  } catch (error) {
+    console.error("[POST /reports] Failed:", error);
+    res.status(500).json({ error: "Failed to generate report" });
+  }
+});
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
