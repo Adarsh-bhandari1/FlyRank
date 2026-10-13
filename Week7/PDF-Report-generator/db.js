@@ -83,3 +83,22 @@ export function getReportById(id) {
   db.close();
   return report;
 }
+
+
+export function getReportForToday() {
+  const db = new DatabaseSync(DB_PATH);
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS reports(
+    id TEXT PRIMARY KEY , 
+    path TEXT NOT NULL,
+    created_at TEXT NOT NULL
+    )
+    `);
+  const today = new Date().toISOString().split("T")[0]; // Give today date YYYY-MM-DD format.
+
+  const report = db.prepare(
+    "SELECT * FROM reports WHERE created_at LIKE ? LIMIT 1"  // Return Only 1 record.
+  ).get(`${today}%`);
+  db.close();
+  return report;
+}
