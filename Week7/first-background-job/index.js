@@ -28,6 +28,7 @@ const sayHello = inngest.createFunction(
 const makeReport = inngest.createFunction(
   {
     id: "make-report",
+    retries: 2,
     triggers: [{ event: "report/requested" }],
   },
   async ({ event, step }) => {
@@ -36,6 +37,9 @@ const makeReport = inngest.createFunction(
     await step.sleep("do-the-slow-work", "8s");
 
     const result = await step.run("build-report", () => {
+      if (topic === "fail") {
+        throw new Error("The report oven is broken!");
+      }
       return `Report successfully generated for topic: ${topic}`;
     });
 
@@ -49,6 +53,11 @@ const makeReport = inngest.createFunction(
 
 app.post("/reports", (req, res) => {
   const { topic } = req.body;
+
+  if (!topic) {
+    return res.status(400).json({ error: "Missing topic in request body" });
+  }
+
   const id = randomUUID();
 
   reports.set(id, { id, topic, status: "pending" });
