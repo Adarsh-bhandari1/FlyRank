@@ -51,6 +51,30 @@ const makeReport = inngest.createFunction(
   },
 );
 
+const heartbeat = inngest.createFunction(
+  {
+    id: "heartbeat",
+    triggers: [{ cron: "* * * * *" }], // Every minute
+  },
+  async ({ step }) => {
+    await step.run("log-summary", () => {
+      let pending = 0,
+        done = 0,
+        failed = 0;
+
+      for (const r of reports.values()) {
+        if (r.status === "pending") pending++;
+        else if (r.status === "done") done++;
+        else failed++;
+      }
+
+      console.log(
+        `[Heartbeat] Summary: ${pending} pending, ${done} done, ${failed} failed`,
+      );
+    });
+  },
+);
+
 app.post("/reports", (req, res) => {
   const { topic } = req.body;
 
@@ -77,7 +101,10 @@ app.get("/reports/:id", (req, res) => {
 
 app.use(
   "/api/inngest",
-  serve({ client: inngest, functions: [sayHello, makeReport] }),
+  serve({
+    client: inngest,
+    functions: [sayHello, makeReport, heartbeat],
+  }),
 );
 
 const PORT = 3000;
